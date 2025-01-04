@@ -3,14 +3,15 @@
   "description": "Hide Reels and Shorts, cuz is this what you want to do with your limited time?",
   "manifest_version": 3,
   "version": "1.0",
-  "permissions": ["activeTab"],
+  "permissions": ["activeTab", "storage"],
   "content_scripts": [
     {
-      "matches": ["https://www.instagram.com/*", "https://www.youtube.com/*"],
+      "matches": ["<all_urls>"],
       "js": ["content.js"]
     }
   ],
   "action": {
+    "default_popup": "popup.html",
     "default_icon": "logo.png"
   },
   "icons": {

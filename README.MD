@@ -1,18 +1,15 @@
 # Get Bored
 
-A Chrome extension that hides the Reels and Explore button on Instagram. For Shorts on YouTube, those guys are pretty clever. They have a button, not a link. But don't worry. If you click the button, it will just clear the page.
+A Chrome extension that hides the Reels and Explore button on Instagram. You can also specify your own list of sites to block access to.
 
 <img src="logo.png" width="200px" />
 
-## Blocked Pages
+## Features
+
+- **anti-shorts mode:** blocks short form content (Instagram reels & explore, YouTube shorts & TikTok), and you can’t disable it for 12 hours once enabled 💪
+- **custom blacklist/whitelist:** decide which sites to block or only allow specific ones.
 
 <img src="ss.png" width="400px" />
-
-- Instagram
-  - Reels
-  - Explore
-- YouTube
-  - Shorts
 
 ## Installation
 
