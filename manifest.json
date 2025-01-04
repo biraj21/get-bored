@@ -1,0 +1,21 @@
+{
+  "name": "Get bored",
+  "description": "Hide Reels and Shorts, cuz is this what you want to do with your limited time?",
+  "manifest_version": 3,
+  "version": "1.0",
+  "permissions": ["activeTab"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.instagram.com/*", "https://www.youtube.com/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_icon": "logo.png"
+  },
+  "icons": {
+    "16": "logo.png",
+    "48": "logo.png",
+    "128": "logo.png"
+  }
+}
