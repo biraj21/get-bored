@@ -22,7 +22,21 @@ async function main() {
     return;
   }
 
-  window.addEventListener("DOMContentLoaded", antishortsHideButtons);
+  window.addEventListener("DOMContentLoaded", () => {
+    // if this page's content was already replaced, we don't need to do anything
+    if (replacePageContent.contentReplaced) {
+      return;
+    }
+
+    // observe DOM changes to ensure that the buttons stay removed
+    // without this, the buttons would come back again if you for example
+    // go to DMs page on instagram
+    const observer = new MutationObserver(antishortsHideButtons);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: false,
+    });
+  });
 }
 
 main().catch(console.error);
@@ -164,9 +178,7 @@ function antishortsHideButtons() {
     return false;
   }
 
-  const selectors = paths
-    .map((selector) => `a[href^="${selector}"]`)
-    .join(", ");
+  const selectors = paths.map((selector) => `a[href^="${selector}"]`).join(", ");
 
   const links = document.querySelectorAll(selectors);
   links.forEach((link) => {
