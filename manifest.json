@@ -1,22 +1,26 @@
 {
   "name": "Get bored",
-  "description": "Hide Reels and Shorts, cuz is this what you want to do with your limited time?",
+  "description": "Hide Reels and Shorts, cuz is this what you want to do with your limited time? Say no to brain rot.",
   "manifest_version": 3,
-  "version": "1.0",
+  "version": "1.0.0",
   "permissions": ["activeTab", "storage"],
+  "background": {
+    "service_worker": "./js/load-settings.js"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["./js/shared.js", "./js/content.js"],
+      "run_at": "document_start"
     }
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "logo.png"
+    "default_icon": "./images/logo.png"
   },
   "icons": {
-    "16": "logo.png",
-    "48": "logo.png",
-    "128": "logo.png"
+    "16": "./images/logo.png",
+    "48": "./images/logo.png",
+    "128": "./images/logo.png"
   }
 }

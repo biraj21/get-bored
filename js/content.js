@@ -1,84 +1,94 @@
-/** @type {MutationObserver | null} */
-let domObserver = null;
+"use strict";
 
 async function main() {
   // loading settings from storage
-  const data = await chrome.storage.sync.get([
-    "antishortsMode",
-    "whitelistMode",
-  ]);
+  const settings = await loadSettingsFromStorage();
 
-  const blocked = await handleDomainBlocking(data.whitelistMode);
+  const blocked = await handleDomainBlocking(settings);
+
+  // if current domain is blocked, we don't need to do anything further
+  // since we already replaced the page content
   if (blocked) {
     return;
   }
 
-  if (!data.antishortsMode) {
+  if (!settings.antishortsMode) {
     return;
   }
 
-  function antishorts() {
-    const blocked = clearBlockedPage();
-
-    // if current page is blocked, we don't need to do anything further
-    // since we already replaced the page content
-    if (blocked) {
-      return;
-    }
-
-    antishortsHideButtons();
+  // if current domain is blocked, we don't need to do anything further
+  // since we already replaced the page content
+  if (clearBlockedPage()) {
+    return;
   }
 
-  // observe DOM changes to ensure it also works when user interacts with the page
-  domObserver = new MutationObserver(antishorts);
-  domObserver.observe(document.body, { childList: true, subtree: true });
-  antishorts();
+  window.addEventListener("DOMContentLoaded", antishortsHideButtons);
 }
 
 main().catch(console.error);
 
 function replacePageContent() {
-  // wrapped in setTimeout to let the original content load
-  // i noticed that withtout timeout, there was a perpetual loading indicator
-  // in tab's title bar or address bar whatever it's called
-  setTimeout(() => {
-    // we have to  disconnect the observer
-    // othwersise it will infinitely call getBored() since clearBlockedPage()
-    // modifies the DOM
-    if (domObserver) {
-      domObserver.disconnect();
-    }
+  if (replacePageContent.contentReplaced) {
+    console.error("replacePageContent() was called twice");
+    return true;
+  }
 
+  if (document.head) {
     document.head.remove();
-    document.body.innerHTML = `
+  }
+
+  let body = document.body;
+  if (!body) {
+    body = document.createElement("body");
+    document.documentElement.appendChild(body);
+  }
+
+  body.innerHTML = `
       <p style="font-size: 24px;">Is this what you want to do with <strong>your limited time</strong> bbg?</p>
-      <h1>Don't do this to yourself. <u>Get bored instead.</u> Get creative.</h1>
+      <h1 style="font-size: 32px;">Don't do this to yourself. <u>Get bored instead.</u> Get creative.</h1>
 `;
-    document.body.style.background = "#ffffff";
-    document.body.style.color = "#000000";
-    document.body.style.textAlign = "center";
-  }, 1000);
+  body.style.background = "#ffffff";
+  body.style.color = "#000000";
+  body.style.textAlign = "center";
+
+  // this is a flag to prevent this function from being run again
+  // it shouldn't be called twice, but just in case
+  replacePageContent.contentReplaced = true;
+
+  // this script is ranAt document_start, but i observed that
+  // after the content is replaced by this function, another body tag was added
+  // to the document, so we need to remove it
+  const observer = new MutationObserver(() => {
+    document.querySelectorAll("body").forEach((b) => {
+      if (b !== body) {
+        b.remove();
+      }
+    });
+  });
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: false,
+  });
 }
 
 /**
  *
- * @param {boolean} whitelistMode
- * @param {boolean} antishortsMode
+ * @param {Settings} settings
+
  * @returns {Promise<boolean>} `true` if curent page is blocked else `false`.
  */
-async function handleDomainBlocking(whitelistMode, antishortsMode) {
+async function handleDomainBlocking(settings) {
   const currentDomain = window.location.hostname;
-  if (whitelistMode) {
-    const data = await chrome.storage.sync.get("whitelistSites");
-    const whilteList = new Set(data.whitelistSites || []);
+  if (settings.whitelistMode) {
+    const whiltelist = new Set(settings.whitelistSites);
 
     // if current domain is in the whitelist, we don't need to do anything
-    if (whilteList.has(currentDomain)) {
+    if (whiltelist.has(currentDomain)) {
       return false;
     }
 
     // we also have to check if the current current domain is a subdomain of a whitelisted domain
-    for (const domain of whilteList) {
+    for (const domain of whiltelist) {
       // if current domain is a subdomain of a whitelisted domain, we don't need to do anything
       if (currentDomain.endsWith(`.${domain}`)) {
         return false;
@@ -90,11 +100,10 @@ async function handleDomainBlocking(whitelistMode, antishortsMode) {
     return true;
   }
 
-  const data = await chrome.storage.sync.get("blacklistSites");
-  const blacklist = new Set(data.blacklistSites || []);
+  const blacklist = new Set(settings.blacklistSites);
 
   // add TikTok to blacklist if antishortsMode is enabled
-  if (antishortsMode) {
+  if (settings.antishortsMode) {
     blacklist.add(TIKTOK_DOMAIN);
   }
 
@@ -158,9 +167,10 @@ function antishortsHideButtons() {
   const selectors = paths
     .map((selector) => `a[href^="${selector}"]`)
     .join(", ");
+
   const links = document.querySelectorAll(selectors);
   links.forEach((link) => {
-    link.style.display = "none";
+    link.remove();
   });
 
   return true;

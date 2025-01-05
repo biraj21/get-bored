@@ -1,24 +1,9 @@
-const DEFAULT_BLACKLIST_SITES = [
-  "instagram.com",
-  "tiktok.com",
-  "facebook.com",
-  "x.com",
-  "twitter.com",
-];
-
-const DEFAULT_WHITELIST_SITES = [
-  "google.com",
-  "chatgpt.com",
-  "claude.ai",
-  "perplexity.ai",
-  "github.com",
-  "stackoverflow.com",
-];
+"use strict";
 
 /** @type {HTMLElement | null} */
 let $statusText = null;
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const $antishortsModeCheckbox = document.getElementById("antishorts-mode");
   const $blacklistContainer = document.getElementById("blacklist-container");
   const $blacklistSitesTextarea = document.getElementById("blacklist-sites");
@@ -27,48 +12,25 @@ document.addEventListener("DOMContentLoaded", () => {
   const $whitelistModeCheckbox = document.getElementById("whitelist-mode");
   $statusText = document.getElementById("status");
 
-  /** @type {boolean} */
-  let antishortsMode = true;
+  const settings = await loadSettingsFromStorage();
 
-  /** @type {number | undefined | null} */
-  let antishortsModeEnabledAt;
+  $antishortsModeCheckbox.checked = settings.antishortsMode;
+  $blacklistSitesTextarea.value = settings.blacklistSites.join("\n");
+  $whitelistSitesTextarea.value = settings.whitelistSites.join("\n");
+  $whitelistModeCheckbox.checked = settings.whitelistMode;
 
-  // load settings from storage
-  chrome.storage.sync.get(
-    [
-      "antishortsMode",
-      "antishortsModeEnabledAt",
-      "blacklistSites",
-      "whitelistSites",
-      "whitelistMode",
-    ],
-    (data) => {
-      if (typeof data.antishortsMode === "boolean") {
-        antishortsMode = data.antishortsMode;
-      }
+  let antishortsModeEnabledAt = settings.antishortsModeEnabledAt;
 
-      if (typeof data.antishortsModeEnabledAt === "number") {
-        antishortsModeEnabledAt = data.antishortsModeEnabledAt;
-      } else {
-        antishortsModeEnabledAt = Date.now();
-        chrome.storage.sync.set({ antishortsModeEnabledAt });
-      }
-
-      const blacklistSites = data.blacklistSites || DEFAULT_BLACKLIST_SITES;
-      const whitelistSites = data.whitelistSites || DEFAULT_WHITELIST_SITES;
-      const whitelistMode = data.whitelistMode || false;
-
-      $antishortsModeCheckbox.checked = antishortsMode;
-      $blacklistSitesTextarea.value = blacklistSites.join("\n");
-      $whitelistSitesTextarea.value = whitelistSites.join("\n");
-      $whitelistModeCheckbox.checked = whitelistMode;
-
-      toggleTextareas();
-    },
-  );
+  toggleTextareas();
 
   // validate antishorts mode toggle
   $antishortsModeCheckbox.addEventListener("change", () => {
+    console.log(
+      "birajlog $antishortsModeCheckbox.checked",
+      $antishortsModeCheckbox.checked,
+    );
+    console.log("birajlog antishortsModeEnabledAt", antishortsModeEnabledAt);
+
     if ($antishortsModeCheckbox.checked) {
       return;
     }
@@ -78,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const diff = Date.now() - antishortsModeEnabledAt;
-    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
 
     // do not allow antishorts mode to be disabled if
     // it was enabled less than 12 hours ago
@@ -98,32 +60,30 @@ document.addEventListener("DOMContentLoaded", () => {
   $whitelistModeCheckbox.addEventListener("change", toggleTextareas);
 
   // save settings
-  document.getElementById("save-settings").addEventListener("click", () => {
-    const newAntishortsMode = $antishortsModeCheckbox.checked;
-    const blacklistSites = getSitesFromTextarea($blacklistSitesTextarea);
-    const whitelistSites = getSitesFromTextarea($whitelistSitesTextarea);
-    const whitelistMode = $whitelistModeCheckbox.checked;
+  document
+    .getElementById("save-settings")
+    .addEventListener("click", async () => {
+      const newAntishortsMode = $antishortsModeCheckbox.checked;
+      const blacklistSites = getSitesFromTextarea($blacklistSitesTextarea);
+      const whitelistSites = getSitesFromTextarea($whitelistSitesTextarea);
+      const whitelistMode = $whitelistModeCheckbox.checked;
 
-    // if antishorts mode was just enabled, set the curreent time
-    if (!antishortsMode && newAntishortsMode) {
-      antishortsModeEnabledAt = Date.now();
-    } else if (!newAntishortsMode) {
-      antishortsModeEnabledAt = null;
-    }
+      // if antishorts mode was just enabled, set the current time
+      if (!settings.antishortsMode && newAntishortsMode) {
+        antishortsModeEnabledAt = Date.now();
+      } else if (!newAntishortsMode) {
+        antishortsModeEnabledAt = null;
+      }
 
-    chrome.storage.sync.set(
-      {
+      await chrome.storage.sync.set({
         antishortsMode: newAntishortsMode,
         antishortsModeEnabledAt,
         blacklistSites,
         whitelistSites,
         whitelistMode,
-      },
-      () => {
-        setStatusText("Settings saved!", 2000, "success");
-      },
-    );
-  });
+      });
+      setStatusText("Settings saved!", 2000, "success");
+    });
 
   // to toggle between blacklist and whitelist textareas
   function toggleTextareas() {
