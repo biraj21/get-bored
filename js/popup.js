@@ -25,12 +25,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // validate antishorts mode toggle
   $antishortsModeCheckbox.addEventListener("change", () => {
-    console.log(
-      "birajlog $antishortsModeCheckbox.checked",
-      $antishortsModeCheckbox.checked,
-    );
-    console.log("birajlog antishortsModeEnabledAt", antishortsModeEnabledAt);
-
     if ($antishortsModeCheckbox.checked) {
       return;
     }
