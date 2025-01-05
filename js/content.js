@@ -28,14 +28,7 @@ async function main() {
       return;
     }
 
-    // observe DOM changes to ensure that the buttons stay removed
-    // without this, the buttons would come back again if you for example
-    // go to DMs page on instagram
-    const observer = new MutationObserver(antishortsHideButtons);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: false,
-    });
+    antishortsHideButtons();
   });
 }
 
@@ -180,10 +173,16 @@ function antishortsHideButtons() {
 
   const selectors = paths.map((selector) => `a[href^="${selector}"]`).join(", ");
 
-  const links = document.querySelectorAll(selectors);
-  links.forEach((link) => {
-    link.remove();
-  });
+  // add <style> to hide the links - a simple idea suggested by @sxmawl
+  // and i feel that his solution is better than mine cuz i was using
+  // MutationObserver to remove the buttons again when they come back
+  const $style = document.createElement("style");
+  $style.textContent = `
+    ${selectors} {
+      display: none !important;
+    }
+  `;
+  document.head.appendChild($style);
 
   return true;
 }
