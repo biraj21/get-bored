@@ -7,7 +7,6 @@ async function main() {
   const blocked = await handleDomainBlocking(settings);
 
   // if current domain is blocked, we don't need to do anything further
-  // since we already replaced the page content
   if (blocked) {
     return;
   }
@@ -17,9 +16,13 @@ async function main() {
   }
 
   // if current domain is blocked, we don't need to do anything further
-  // since we already replaced the page content
   if (clearBlockedPage()) {
     return;
+  }
+
+  // Aggressive Shorts blocking starts early
+  if (window.location.hostname.includes('youtube.com')) {
+    blockYouTubeShorts();
   }
 
   window.addEventListener("DOMContentLoaded", () => {
@@ -29,6 +32,11 @@ async function main() {
     }
 
     antishortsHideButtons();
+    
+    // Additional Shorts blocking on page load
+    if (window.location.hostname.includes('youtube.com')) {
+      blockYouTubeShorts();
+    }
   });
 }
 
@@ -81,7 +89,6 @@ function replacePageContent() {
 /**
  *
  * @param {Settings} settings
-
  * @returns {Promise<boolean>} `true` if curent page is blocked else `false`.
  */
 async function handleDomainBlocking(settings) {
@@ -204,6 +211,109 @@ function clearBlockedPage() {
   }
 
   return false;
+}
+
+/**
+ * Specifically block YouTube Shorts with multiple blocking techniques
+ */
+function blockYouTubeShorts() {
+  // Comprehensive list of selectors to target Shorts elements
+  const shortsSelectors = [
+    // Shorts links and navigation
+    'a[href*="/shorts/"]',
+    'a[title="Shorts"]',
+    '[aria-label="Shorts"]',
+    
+    // Shelf renderers
+    'ytd-reel-shelf-renderer',
+    'ytd-shorts-shelf-renderer',
+    '.ytd-shorts-shelf-renderer',
+    
+    // Sidebar and navigation elements
+    '#sections > ytd-guide-section-renderer:has(a[href*="/shorts"])',
+    'tp-yt-paper-tab:has(a[href*="/shorts"])',
+    '.ytd-guide-entry-renderer:has([href*="/shorts"])',
+    
+    // Additional YouTube component selectors
+    '[href*="/shorts"]'
+  ];
+
+  // Function to remove Shorts elements
+  function removeShorts() {
+    shortsSelectors.forEach(selector => {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach(el => {
+        // Multiple removal techniques
+        el.style.display = 'none';
+        el.style.visibility = 'hidden';
+        el.setAttribute('hidden', 'true');
+        
+        // Attempt to remove from DOM
+        try {
+          el.remove();
+        } catch (error) {
+          console.log('Could not remove Shorts element:', selector);
+        }
+      });
+    });
+  }
+
+  // Add style to completely hide Shorts-related content
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    a[href*="/shorts/"],
+    ytd-reel-shelf-renderer,
+    ytd-shorts-shelf-renderer,
+    .ytd-shorts-shelf-renderer,
+    [href*="/shorts"] {
+      display: none !important;
+      visibility: hidden !important;
+      width: 0 !important;
+      height: 0 !important;
+      opacity: 0 !important;
+    }
+  `;
+  
+  // Append style to head
+  if (document.head) {
+    styleEl.setAttribute('data-shorts-block', 'true');
+    document.head.appendChild(styleEl);
+  }
+
+  // Intercept and block Shorts navigation
+  const shortsBlocker = (event) => {
+    const target = event.target.closest('a');
+    if (!target) return;
+
+    const href = target.getAttribute('href');
+    if (href && href.includes('/shorts/')) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      // Replace page content or do additional blocking
+      replacePageContent();
+    }
+  };
+
+  // Continuous removal with MutationObserver
+  const shortsRemovalObserver = new MutationObserver(() => {
+    removeShorts();
+  });
+
+  // Initial removal
+  removeShorts();
+
+  // Add click event listener to prevent Shorts navigation
+  document.addEventListener('click', shortsBlocker, true);
+
+  // Start observing the entire document
+  shortsRemovalObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  });
+
+  // Modify antishortsBlockedPaths to include /shorts explicitly
+  antishortsBlockedPaths["youtube.com"].push("/shorts");
 }
 
 // ----- utils/helpers -----
